@@ -1,9 +1,9 @@
 /* =============================================================================
-   URA ORB  ·  v1.0
+   GLASS ORB  ·  v1.0
    One WebGL fragment shader, two surfaces:
 
-     URAOrb.mount(el, {preset:'orb'})    the primary action button
-     URAOrb.mount(el, {preset:'aura'})   the hero ring — light only, no glass
+     GlassOrb.mount(el, {preset:'orb'})    the primary action button
+     GlassOrb.mount(el, {preset:'glow'})   the hero ring — light only, no glass
 
    The effect is offset colour channels (chromatic aberration) mixed with
    thin-film interference whose refraction samples the real backdrop at three
@@ -13,9 +13,9 @@
    No dependencies. ~9kb. Works down to WebGL1.
 
      <div id="orb" style="width:108px;height:108px"></div>
-     <script src="ura-orb.js"></script>
+     <script src="glass-orb.js"></script>
      <script>
-       const orb = URAOrb.mount(document.getElementById('orb'), {
+       const orb = GlassOrb.mount(document.getElementById('orb'), {
          preset: 'orb',
          backdrop: 'bg.jpg'          // optional; what the ring refracts
        });
@@ -28,7 +28,7 @@
    ========================================================================== */
 (function (root, factory) {
   if (typeof module === 'object' && module.exports) module.exports = factory();
-  else root.URAOrb = factory();
+  else root.GlassOrb = factory();
 }(typeof self !== 'undefined' ? self : this, function () {
 'use strict';
 
@@ -80,7 +80,7 @@ var BASE = {
    stays a wash. */
 var PRESETS = {
   orb: {},
-  aura: {
+  glow: {
     bare:1,                /* no glass body, no lens disc, transparent ground */
     discScale:0.955,
     mop:0.187,             /* 0.34x */
@@ -250,7 +250,7 @@ function compile(gl, type, src) {
   var o = gl.createShader(type);
   gl.shaderSource(o, src); gl.compileShader(o);
   if (!gl.getShaderParameter(o, gl.COMPILE_STATUS))
-    console.warn('[URAOrb]', gl.getShaderInfoLog(o));
+    console.warn('[GlassOrb]', gl.getShaderInfoLog(o));
   return o;
 }
 

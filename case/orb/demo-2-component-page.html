@@ -35,9 +35,9 @@ h2{font-weight:600;font-size:10px;letter-spacing:.1em;text-transform:uppercase;
 p.note{font-weight:400;font-size:15px;line-height:1.5;color:var(--ink-2);
   margin:0 0 36px;max-width:52ch}
 
-/* ---------- 1 · HERO AURA ---------- */
+/* ---------- 1 · HERO GLOW ---------- */
 .hero{height:300px;display:grid;place-items:center;position:relative}
-.aura{width:132px;height:132px;position:relative}
+.glow{width:132px;height:132px;position:relative}
 /* soft expanding bands — no stroke, no edge, same spectrum as the ring */
 .pulse{position:absolute;left:50%;top:50%;width:168px;height:168px;margin:-84px 0 0 -84px;
   border-radius:50%;pointer-events:none;
@@ -85,7 +85,7 @@ p.note{font-weight:400;font-size:15px;line-height:1.5;color:var(--ink-2);
       gradients with no edge, never stroked circles.</p>
     <div class="hero">
       <div class="pulse"></div><div class="pulse"></div><div class="pulse"></div>
-      <div class="aura" id="aura"></div>
+      <div class="glow" id="glow"></div>
     </div>
   </section>
 
@@ -104,7 +104,7 @@ p.note{font-weight:400;font-size:15px;line-height:1.5;color:var(--ink-2);
   </section>
 </main>
 
-<script src="ura-orb.js"></script>
+<script src="demo-2-component.js"></script>
 <script>
   // What the dispersion refracts. Strongly recommended: with a flat colour
   // the three channel samples land on the same value, so there is nothing to
@@ -112,10 +112,10 @@ p.note{font-weight:400;font-size:15px;line-height:1.5;color:var(--ink-2);
   const BACKDROP = 'data:image/png;base64,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';
 
   // The hero ring — light only.
-  URAOrb.mount(document.getElementById('aura'), { preset:'aura', backdrop:BACKDROP });
+  GlassOrb.mount(document.getElementById('glow'), { preset:'glow', backdrop:BACKDROP });
 
   // The button — glass + ring + lens.
-  const orb = URAOrb.mount(document.getElementById('orb'), { preset:'orb', backdrop:BACKDROP });
+  const orb = GlassOrb.mount(document.getElementById('orb'), { preset:'orb', backdrop:BACKDROP });
 
   // Press feedback: a brief swell, then back.
   const btn = document.getElementById('orb');
