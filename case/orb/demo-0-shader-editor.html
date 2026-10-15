@@ -1,0 +1,273 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Demo 0 — Early shader editor</title>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@100,200,600&display=swap">
+<style>
+:root{--font:'Switzer','Suisse Int\'l',-apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif;}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:var(--font);background:#141517;color:#EDEDEA;overflow:hidden;
+  -webkit-font-smoothing:antialiased}
+.app{display:grid;grid-template-columns:1fr 360px;height:100vh}
+.stage{position:relative;overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.glyph{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;pointer-events:none}
+.glyph svg{width:28px;height:28px;fill:none;stroke:rgba(255,255,255,.92);stroke-width:1;
+  stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 5px rgba(0,0,0,.35))}
+body.no-glyph .glyph{display:none}
+.hud{position:absolute;left:24px;bottom:20px;font-weight:600;font-size:10px;letter-spacing:.09em;
+  text-transform:uppercase;color:rgba(255,255,255,.4);z-index:6}
+.err{position:absolute;inset:0;display:grid;place-items:center;padding:40px;text-align:center;
+  font-weight:600;font-size:13px;color:#E88;display:none}
+
+.panel{background:#1B1C1F;border-left:.5px solid rgba(255,255,255,.10);overflow-y:auto;padding:22px 22px 60px}
+.panel h1{margin:0 0 2px;font-weight:100;font-size:23px;letter-spacing:-.03em}
+.panel .sub{margin:0 0 18px;font-weight:600;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#7C7D79}
+.grp{border-top:.5px solid rgba(255,255,255,.10);padding:14px 0 3px}
+.grp h2{margin:0 0 12px;font-weight:600;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#7C7D79}
+.row{display:grid;grid-template-columns:84px 1fr 44px;gap:9px;align-items:center;margin-bottom:9px}
+.row label{font-weight:600;font-size:11px;color:#B7B8B3}
+.row output{font-weight:600;font-size:10px;color:#EDEDEA;text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:2px;background:rgba(255,255,255,.18);
+  border-radius:2px;outline:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;
+  background:#EDEDEA;cursor:pointer}
+.segs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:10px}
+.segs button{font-family:var(--font);font-weight:600;font-size:10.5px;padding:7px 11px;border-radius:99px;
+  border:.5px solid rgba(255,255,255,.16);background:transparent;color:#8B8C88;cursor:pointer;transition:.14s}
+.segs button.on{background:#EDEDEA;color:#17181A;border-color:#EDEDEA}
+.acts{display:flex;gap:7px;margin-top:14px}
+.acts button{flex:1;font-family:var(--font);font-weight:600;font-size:11px;padding:10px;border-radius:9px;
+  border:0;background:#EDEDEA;color:#17181A;cursor:pointer}
+.acts button.sec{background:transparent;color:#B7B8B3;border:.5px solid rgba(255,255,255,.16)}
+.note{font-weight:600;font-size:10.5px;line-height:1.5;color:#7C7D79;margin:12px 0 0}
+</style>
+</head>
+<body>
+<div class="app">
+  <div class="stage" id="stage">
+    <canvas id="cv"></canvas>
+    <div class="glyph"><svg viewBox="0 0 24 24"><path d="M12 3v18M7 7.5c0 2 10 2 10 4.5s-10 2.5-10 4.5"/></svg></div>
+    <div class="hud">WebGL · thin-film interference + per-channel refraction</div>
+    <div class="err" id="err">WebGL unavailable in this browser.</div>
+  </div>
+
+  <aside class="panel">
+    <h1>Orb Shader</h1>
+    <p class="sub">Real dispersion · fragment shader</p>
+
+    <div class="grp"><h2>Backdrop</h2>
+      <div class="segs" id="bg">
+        <button data-v="0" class="on">Photo</button><button data-v="1">Light</button>
+        <button data-v="2">Mid</button><button data-v="3">Dark</button><button data-v="4">Black</button>
+      </div>
+      <div class="segs" id="tog"><button data-k="no-glyph">Hide glyph</button><button data-k="paused">Pause</button></div>
+    </div>
+
+    <div class="grp"><h2>Geometry</h2>
+      <div class="row"><label>Size</label><input type="range" id="size" min="100" max="640" step="4" value="300"><output></output></div>
+      <div class="row"><label>Ring radius</label><input type="range" id="R" min=".3" max=".98" step=".005" value=".80"><output></output></div>
+      <div class="row"><label>Ring width</label><input type="range" id="W" min=".02" max=".6" step=".005" value=".16"><output></output></div>
+      <div class="row"><label>Softness</label><input type="range" id="soft" min="0" max="3" step=".02" value=".9"><output></output></div>
+    </div>
+
+    <div class="grp"><h2>Thin film</h2>
+      <div class="row"><label>Thickness</label><input type="range" id="film" min="150" max="1600" step="5" value="520"><output></output></div>
+      <div class="row"><label>Variation</label><input type="range" id="fvar" min="0" max="2.5" step=".02" value=".85"><output></output></div>
+      <div class="row"><label>Noise</label><input type="range" id="noise" min="0" max="2" step=".02" value=".55"><output></output></div>
+      <div class="row"><label>Red cut</label><input type="range" id="redcut" min="0" max="1" step=".02" value=".9"><output></output></div>
+    </div>
+
+    <div class="grp"><h2>Refraction</h2>
+      <div class="row"><label>Bend (IOR)</label><input type="range" id="ior" min="0" max="4" step=".02" value="1.4"><output></output></div>
+      <div class="row"><label>Dispersion</label><input type="range" id="disp" min="0" max="2.5" step=".02" value=".9"><output></output></div>
+      <div class="row"><label>Warp</label><input type="range" id="warp" min="0" max="3" step=".02" value=".6"><output></output></div>
+    </div>
+
+    <div class="grp"><h2>Light</h2>
+      <div class="row"><label>Fresnel</label><input type="range" id="fres" min=".3" max="6" step=".05" value="2.2"><output></output></div>
+      <div class="row"><label>Specular</label><input type="range" id="spec" min="0" max="2" step=".02" value=".35"><output></output></div>
+      <div class="row"><label>Opacity</label><input type="range" id="op" min="0" max="1.6" step=".02" value=".9"><output></output></div>
+      <div class="row"><label>Saturation</label><input type="range" id="sat" min="0" max="3" step=".02" value="1.15"><output></output></div>
+    </div>
+
+    <div class="grp"><h2>Glass body</h2>
+      <div class="row"><label>Fill</label><input type="range" id="gfill" min="0" max=".8" step=".01" value=".18"><output></output></div>
+      <div class="row"><label>Blur</label><input type="range" id="gblur" min="0" max="60" step="1" value="22"><output></output></div>
+      <div class="row"><label>Speed</label><input type="range" id="spd" min="0" max="4" step=".02" value="1"><output></output></div>
+    </div>
+
+    <div class="acts"><button id="copy">Copy config</button><button class="sec" id="reset">Reset</button></div>
+    <p class="note">Dispersion here is real: the red, green and blue channels sample the backdrop at
+    different refraction offsets, exactly as glass separates wavelengths. CSS cannot do this —
+    it has no access to what is behind an element.</p>
+  </aside>
+</div>
+
+<script>
+const cv=document.getElementById('cv'), stage=document.getElementById('stage');
+const gl=cv.getContext('webgl',{alpha:false,premultipliedAlpha:false,antialias:true});
+if(!gl){document.getElementById('err').style.display='grid';}
+
+const VS=`attribute vec2 a;varying vec2 vUv;void main(){vUv=a*0.5+0.5;gl_Position=vec4(a,0.,1.);}`;
+const FS=`precision highp float;
+varying vec2 vUv;
+uniform vec2 uRes,uCenter,uCover,uOff;
+uniform float uT,uR,uW,uSoft,uFilm,uFvar,uNoise,uRedCut,uIor,uDisp,uWarp,uFres,uSpec,uOp,uSat,
+              uGFill,uGBlur,uRad,uUseTex;
+uniform vec3 uFlat;
+uniform sampler2D uTex;
+
+float hash(vec2 p){return fract(sin(dot(p,vec2(41.3,289.1)))*43758.5453);}
+float nse(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
+
+vec3 bgAt(vec2 uv){
+  if(uUseTex<0.5) return uFlat;
+  return texture2D(uTex, uv*uCover+uOff).rgb;
+}
+vec3 bgBlur(vec2 uv,float rad){
+  if(uUseTex<0.5) return uFlat;
+  vec3 s=vec3(0.);float k=rad/uRes.x;
+  for(int i=0;i<10;i++){
+    float a=float(i)*2.399963;
+    vec2 o=vec2(cos(a),sin(a))*k*sqrt(float(i)/10.0);
+    s+=bgAt(uv+o);
+  }
+  return s/10.0;
+}
+/* thin-film interference — Airy-style two-beam approximation */
+vec3 film(float d){
+  vec3 lam=vec3(612.,545.,464.);
+  return 0.5+0.5*cos(12.566370614*1.33*d/lam);
+}
+vec3 sat(vec3 c,float s){float l=dot(c,vec3(.2126,.7152,.0722));return mix(vec3(l),c,s);}
+
+void main(){
+  vec2 px=vUv*uRes;
+  vec2 q=(px-uCenter)/uRad;         // -1..1 across the orb
+  float r=length(q);
+  float ang=atan(q.y,q.x);
+
+  vec3 col=bgAt(vUv);
+
+  /* glass body */
+  float body=1.0-smoothstep(0.985,1.0,r);
+  if(body>0.001){
+    vec3 gb=bgBlur(vUv,uGBlur);
+    col=mix(col, mix(gb,vec3(1.0),uGFill), body);
+  }
+
+  /* ring */
+  float h=(r-uR)/max(uW,1e-4);                 // -1..1 across the band
+  float band=1.0-smoothstep(0.0,1.0,abs(h));
+  band=pow(max(band,0.0),1.0+uSoft*3.0);
+
+  if(band>0.002){
+    vec3 N=normalize(vec3(q/max(r,1e-4)*clamp(h,-1.,1.), sqrt(max(0.0,1.0-h*h))));
+    float fres=pow(1.0-abs(N.z),uFres);
+    float nz=nse(vec2(ang*2.6+uT*0.22, r*7.0-uT*0.14));
+
+    float d=uFilm*(1.0+uFvar*(fres*1.4 + (nz-0.5)*uNoise*2.0 + sin(ang*3.0+uT*0.55)*0.3));
+    vec3 irid=film(d);
+
+    /* per-channel refraction of the real backdrop */
+    vec2 dir=q/max(r,1e-4);
+    vec2 off=dir*(uIor*clamp(h,-1.,1.)*0.045) + dir*uWarp*(nz-0.5)*0.03;
+    vec3 bgr;
+    bgr.r=bgAt(vUv+off*(1.0+uDisp*0.6)).r;
+    bgr.g=bgAt(vUv+off).g;
+    bgr.b=bgAt(vUv+off*(1.0-uDisp*0.6)).b;
+
+    /* push the red band toward yellow-green */
+    float ex=max(irid.r-max(irid.g,irid.b),0.0);
+    irid.r-=ex*uRedCut; irid.g+=ex*uRedCut*0.9;
+
+    vec3 ring=bgr*0.45 + irid*(0.5+fres*1.0);
+    ring+=pow(fres,3.0)*uSpec;
+    ring=sat(ring,uSat);
+
+    col=mix(col, col+ring*0.9, clamp(band*uOp,0.0,1.0));
+  }
+  gl_FragColor=vec4(col,1.0);
+}`;
+
+let prog,U={},tex,T=0,last=performance.now();
+if(gl){
+  const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);
+    if(!gl.getShaderParameter(o,gl.COMPILE_STATUS)){console.error(gl.getShaderInfoLog(o));}return o;};
+  prog=gl.createProgram();
+  gl.attachShader(prog,sh(gl.VERTEX_SHADER,VS));gl.attachShader(prog,sh(gl.FRAGMENT_SHADER,FS));
+  gl.linkProgram(prog);gl.useProgram(prog);
+  const buf=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,buf);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const a=gl.getAttribLocation(prog,'a');gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
+  'uRes uCenter uCover uOff uT uR uW uSoft uFilm uFvar uNoise uRedCut uIor uDisp uWarp uFres uSpec uOp uSat uGFill uGBlur uRad uUseTex uFlat uTex'
+    .split(' ').forEach(n=>U[n]=gl.getUniformLocation(prog,n));
+
+  tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([128,128,128,255]));
+  const im=new Image();
+  im.onload=()=>{gl.bindTexture(gl.TEXTURE_2D,tex);
+    gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,im);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);};
+  im.src='data:image/png;base64,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';
+}
+
+/* controls */
+const P={};
+document.querySelectorAll('.row input[type=range]').forEach(el=>{
+  const go=()=>{P[el.id]=+el.value;el.parentElement.querySelector('output').textContent=el.value;};
+  el.oninput=go;go();});
+let BG=0;
+bg.onclick=e=>{if(!e.target.dataset.v)return;
+  [...bg.children].forEach(b=>b.classList.toggle('on',b===e.target));BG=+e.target.dataset.v;};
+tog.onclick=e=>{const k=e.target.dataset.k;if(!k)return;
+  e.target.classList.toggle('on');document.body.classList.toggle(k);};
+reset.onclick=()=>location.reload();
+copy.onclick=()=>{const s=JSON.stringify(P,null,1);navigator.clipboard?.writeText(s);
+  copy.textContent='Copied ✓';setTimeout(()=>copy.textContent='Copy config',1300);};
+
+const FLAT=[[0,0,0],[.937,.937,.925],[.541,.549,.525],[.09,.094,.102],[0,0,0]];
+function frame(now){
+  const dt=(now-last)/1000;last=now;
+  if(!document.body.classList.contains('paused'))T+=dt*P.spd;
+  if(gl){
+    const dpr=Math.min(devicePixelRatio||1,2), w=stage.clientWidth, h=stage.clientHeight;
+    if(cv.width!==w*dpr||cv.height!==h*dpr){cv.width=w*dpr;cv.height=h*dpr;}
+    gl.viewport(0,0,cv.width,cv.height);
+    const RES=[cv.width,cv.height];
+    // cover-fit the 22x42 source into the viewport
+    const ta=22/42, ca=RES[0]/RES[1];
+    let cov=[1,1],off=[0,0];
+    if(ca>ta){cov=[1, ta/ca]; off=[0,(1-cov[1])/2];} else {cov=[ca/ta,1]; off=[(1-cov[0])/2,0];}
+    gl.uniform2fv(U.uRes,RES);
+    gl.uniform2fv(U.uCenter,[RES[0]/2,RES[1]/2]);
+    gl.uniform2fv(U.uCover,cov); gl.uniform2fv(U.uOff,off);
+    gl.uniform1f(U.uRad,P.size*dpr/2);
+    gl.uniform1f(U.uT,T);
+    ['R','W','soft','film','fvar','noise','redcut','ior','disp','warp','fres','spec','op','sat','gfill','gblur']
+      .forEach((k,i)=>{});
+    gl.uniform1f(U.uR,P.R);gl.uniform1f(U.uW,P.W);gl.uniform1f(U.uSoft,P.soft);
+    gl.uniform1f(U.uFilm,P.film);gl.uniform1f(U.uFvar,P.fvar);gl.uniform1f(U.uNoise,P.noise);
+    gl.uniform1f(U.uRedCut,P.redcut);gl.uniform1f(U.uIor,P.ior);gl.uniform1f(U.uDisp,P.disp);
+    gl.uniform1f(U.uWarp,P.warp);gl.uniform1f(U.uFres,P.fres);gl.uniform1f(U.uSpec,P.spec);
+    gl.uniform1f(U.uOp,P.op);gl.uniform1f(U.uSat,P.sat);
+    gl.uniform1f(U.uGFill,P.gfill);gl.uniform1f(U.uGBlur,P.gblur*dpr);
+    gl.uniform1f(U.uUseTex,BG===0?1:0);
+    gl.uniform3fv(U.uFlat,FLAT[BG]);
+    gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);gl.uniform1i(U.uTex,0);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+  }
+  requestAnimationFrame(frame);
+}
+requestAnimationFrame(frame);
+</script>
+</body>
+</html>

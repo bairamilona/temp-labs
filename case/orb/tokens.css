@@ -1,0 +1,256 @@
+/* ============================================================
+   VITAL — Design System Tokens
+   Monochrome AI health companion. Light base.
+   v1.0
+   ============================================================ */
+
+@import url('https://api.fontshare.com/v2/css?f[]=switzer@300,400,600&display=swap');
+
+:root {
+
+  /* ---------- 1. GREYSCALE RAMP ----------
+     No hue. Slight warm cast (+1 on R, 0 on B) keeps white
+     from reading clinical-blue on OLED. */
+  --grey-000: #FFFFFF;
+  --grey-025: #FCFCFB;
+  --grey-050: #F7F7F5;
+  --grey-100: #EFEFED;
+  --grey-150: #E6E6E3;
+  --grey-200: #DBDBD8;
+  --grey-300: #C3C3BF;
+  --grey-400: #9C9C98;
+  --grey-500: #787874;
+  --grey-600: #565652;
+  --grey-700: #3B3B38;
+  --grey-800: #242422;
+  --grey-900: #131312;
+  --grey-950: #0A0A09;
+
+  /* ---------- 2. SEMANTIC SURFACES ---------- */
+  --canvas:            var(--grey-050);   /* app background */
+  --canvas-veil:       var(--grey-100);   /* blurred atmospheric wash */
+  --surface:           var(--grey-000);   /* cards, sheets */
+  --surface-sunken:    var(--grey-050);   /* inset wells, input fields */
+  /* The "inverse" surface is a 14% tinted glass, not a solid black:
+     primary pill button, user chat bubble, send button. Text on it is
+     --ink-primary, never --ink-inverse — at 14% over a light canvas
+     there is nothing for white type to sit on. */
+  --surface-inverse:   rgba(10,10,9,0.14);
+  --surface-glass:     rgba(255,255,255,0.55);
+  --surface-glass-dim: rgba(255,255,255,0.28);
+
+  /* ---------- 3. INK ---------- */
+  --ink-primary:   var(--grey-950);
+  --ink-secondary: var(--grey-500);
+  --ink-tertiary:  var(--grey-400);
+  --ink-disabled:  var(--grey-300);
+  --ink-inverse:   var(--grey-000);
+
+  /* ---------- 3b. PHOTO-DERIVED INK  (v3, see SKILL §3b) ----------
+     v1 and v2 both measured contrast against --surface (the card) and
+     both were wrong: most type sits on the VEILED PHOTOGRAPH, not on a
+     card. Measured properly, v2's ladder was 8.7 / 4.6 / 3.0 / 1.8 : 1 —
+     disabled text was effectively invisible.
+
+     v3 fixes three things:
+
+     1. THE REFERENCE IS THE RENDERED BACKGROUND.
+        bg = clamp(photo_mean * brightness * (1 - veil) + veil)
+        Derive and verify against that, never against the card.
+
+     2. ROTATE THE HUE AWAY FROM THE BACKGROUND.
+        Ink comes from the darkest 3%, background from the mean — on a
+        monochromatic photograph those are the same hue. Runner photo:
+        ink H202, background H203, a 2deg gap. Blue type on blue ground,
+        which is what "the colours look wrong" actually was.
+        If |hue gap| < 40deg, rotate the ink 27deg away.
+
+     3. CHROMA FALLS AS THE STEP APPROACHES THE BACKGROUND.
+        The opposite of v2. Secondary and tertiary sit closest in
+        lightness to the background, so shared chroma is exactly what
+        collapses them. Saturation multiplier by step:
+            primary 1.00 (cap .34) · secondary .32 (cap .10)
+            tertiary .16 (cap .06) · disabled .09 (cap .04)
+
+     4. LIGHTNESS IS SOLVED, NOT ASSUMED.
+        Binary-search L until the step hits its contrast target against
+        the rendered background:
+            primary 12:1 · secondary 7:1 · tertiary 4.5:1 · disabled 3:1
+        A heavier veil (the chat screen) therefore yields lighter ink
+        automatically, instead of needing a hand-picked exception. */
+  --tint-target-primary:   12.0;
+  --tint-target-secondary:  7.0;
+  --tint-target-tertiary:   4.5;
+  --tint-target-disabled:   3.0;
+  --tint-hue-rotate:        27deg;  /* applied when the gap is under 40deg */
+
+  /* ---------- 3c. ACCENT ----------
+     The one saturated colour allowed outside the orb, and only on
+     data-viz: progress fill, gauge arc, sparkline nodes, active step.
+     Never type, never a surface, never a control fill. */
+  --accent:      #C4FF2E;   /* neon lime */
+  --accent-soft: #E4FF9B;
+  --accent-ink:  #4E6B00;   /* only shade legible as text on --surface */
+
+  /* ---------- 4. HAIRLINES ----------
+     Only two stroke widths exist in this system.
+     0.4px  — internal dividers, ghost buttons, avatar rings
+     0.7px  — card outlines, focus rings, active states
+     Bump to 0.5/1.0 on 1x displays where sub-pixel strokes vanish. */
+  --stroke-hair: 0.4px;
+  --stroke-fine: 0.7px;
+
+  --line-faint:  rgba(10,10,9,0.06);
+  --line-soft:   rgba(10,10,9,0.10);
+  --line-firm:   rgba(10,10,9,0.16);
+  --line-strong: rgba(10,10,9,0.28);
+
+  --hairline: var(--stroke-hair) solid var(--line-soft);
+  --fineline: var(--stroke-fine) solid var(--line-firm);
+
+  /* ---------- 5. SHADOWS — "air" ----------
+     Huge blur, huge negative spread, almost no opacity.
+     Budget: max TWO shadowed elements visible per screen.
+     Everything else sits flat on the canvas. */
+  --shadow-rest:  0 1px 2px -1px rgba(10,10,9,0.04);
+  --shadow-lift:  0 28px 64px -24px rgba(10,10,9,0.10),
+                  0 4px 12px -8px  rgba(10,10,9,0.04);
+  --shadow-float: 0 72px 140px -48px rgba(10,10,9,0.16),
+                  0 12px 32px -16px rgba(10,10,9,0.05);
+  --shadow-orb:   0 40px 80px -32px rgba(10,10,9,0.22),
+                  0 0 0 var(--stroke-hair) rgba(255,255,255,0.6) inset;
+
+  /* ---------- 6. RADII + CORNER SHAPE ----------
+     Every radius is a squircle (superellipse), never a circular arc.
+     Native: corner-shape: squircle;  Figma: corner smoothing 60%. */
+  --r-xs:12px;
+  --r-sm:18px;
+  --r-md:26px;
+  --r-lg:34px;
+  --r-xl:44px;
+  --r-2xl:56px;
+  --r-3xl:68px;
+  --r-pill: 999px;
+  --r-phone:58px;
+
+  /* ---------- 7. TYPE ----------
+     Three weights: 300 Light, 400 Regular, 600 Semibold.
+     100 and 200 were both tried and both failed — over a photographic
+     background a hairline stroke has nothing to hold onto.
+        >= 30px  -> 300 Light
+        20-29px  -> 400 Regular   (the band where Light is still weak)
+        < 20px   -> 600 Semibold
+     Hierarchy at small sizes comes from COLOUR, never weight. */
+  --font: 'Switzer', 'Suisse Int\'l', 'Neue Haas Grotesk Display',
+          -apple-system, BlinkMacSystemFont, 'Inter', system-ui, sans-serif;
+  --font-num: var(--font);
+
+  --w-thin: 300;   /* Light — 100 and 200 both dissolved on photo */
+  --w-mid:  400;   /* Regular — mid sizes, 20-29px, where Light is still weak */
+  --w-semi: 600;
+
+  --t-hero-size:    70px;  --t-hero-lh:    0.94;  --t-hero-track: -0.042em;
+  --t-display-size: 48px;  --t-display-lh: 1.00;  --t-display-track: -0.033em;
+  --t-title-size:   33px;  --t-title-lh:   1.06;  --t-title-track: -0.026em;
+  --t-metric-size:  29px;  --t-metric-lh:  1.0;   --t-metric-track: -0.022em;
+  --t-body-size:    17px;  --t-body-lh:    1.45;  --t-body-track: -0.011em;
+  --t-label-size:   15px;  --t-label-lh:   1.32;   --t-label-track: -0.006em;
+  --t-caption-size: 13px;  --t-caption-lh: 1.28;  --t-caption-track: 0.002em;
+  --t-micro-size:   11px;  --t-micro-lh:   1.2;   --t-micro-track: 0.09em;
+
+  /* ---------- 8. SPACING (4pt) ---------- */
+  --s-1: 4px;   --s-2: 8px;   --s-3: 12px;  --s-4: 16px;
+  --s-5: 20px;  --s-6: 24px;  --s-8: 32px;  --s-10: 40px;
+  --s-12: 48px; --s-14: 56px; --s-18: 72px; --s-24: 96px;
+
+  --gutter: var(--s-5);          /* screen side padding */
+  --card-pad: var(--s-5);
+  --stack: var(--s-3);           /* default gap between siblings */
+
+  /* ---------- 8b. TOUCH TARGETS ----------
+     Grounded in published guidance + tap-accuracy studies:
+       Apple HIG            44 x 44 pt
+       Material Design 3    48 x 48 dp, >= 8dp spacing
+       WCAG 2.2 SC 2.5.8    24 px min (AA) / SC 2.5.5  44 px (AAA)
+       Parhi & Karlson      9.2 mm discrete, 9.6 mm serial, one-thumb
+       Tap-accuracy studies error rate falls steeply to ~10 mm,
+                            plateaus by ~20 mm -> bigger buys nothing
+     We sit at the top of that curve: 48 visual / 64 hit. */
+  --tap-min:      48px;   /* smallest visual control */
+  --tap-comfort:  56px;   /* default: pill buttons, input field, send */
+  --tap-lg:       64px;   /* dock, one-thumb reach zone */
+  --tap-hit:      64px;   /* invisible hit area on every control */
+  --tap-gap:      12px;   /* min space between adjacent targets */
+
+  /* ---------- 8c. ICONS (Lucide) ----------
+     npm i lucide  |  lucide-react  |  @lucide/vue  |  lucide-static
+     Thin and small, used sparingly. Prefer a pictogram. */
+  --icon-size:   18px;
+  --icon-stroke: 1;
+
+  /* ---------- 9. DATA-VIZ STROKES ----------
+     Documented exception to the 0.4/0.7 hairline rule.
+     Data lines need presence; UI chrome does not. */
+  --viz-line: 1.2px;
+  --viz-ring: 2.5px;
+  --viz-node: 4px;
+  --viz-track: rgba(10,10,9,0.10);
+
+  /* ---------- 10. MOTION ---------- */
+  --ease-soft:  cubic-bezier(0.22, 1, 0.36, 1);
+  --ease-inout: cubic-bezier(0.65, 0, 0.35, 1);
+  --ease-spring: cubic-bezier(0.34, 1.56, 0.64, 1);
+
+  --d-instant: 120ms;
+  --d-quick:   200ms;
+  --d-calm:    380ms;
+  --d-breath:  900ms;
+  --d-pulse:   3200ms;   /* ambient / biometric rhythms */
+
+  /* ---------- 11. BLUR ---------- */
+  --blur-glass: 24px;
+  --blur-veil:  80px;
+  --blur-atmos: 140px;
+}
+
+/* No corner-shape support (Safari, Firefox): a circular arc reads fuller than a
+   superellipse of the same radius, so pull every radius back ~15%. */
+@supports not (corner-shape: squircle) {
+  :root {
+    --r-xs:10px; --r-sm:15px; --r-md:22px; --r-lg:29px; --r-xl:37px;
+    --r-2xl:48px; --r-3xl:58px; --r-phone:50px;
+  }
+}
+
+/* Sub-pixel strokes disappear on 1x screens — round them up. */
+@media (max-resolution: 1.5dppx) {
+  :root { --stroke-hair: 0.5px; --stroke-fine: 1px; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  :root { --d-instant:0ms; --d-quick:0ms; --d-calm:0ms; --d-breath:0ms; --d-pulse:0ms; }
+}
+
+/* ============================================================
+   PRIMITIVES
+   ============================================================ */
+
+/* The squircle. Apply to every rounded surface in the product. */
+.sq { corner-shape: squircle; }
+
+/* Type roles */
+.t-hero    { font-weight:var(--w-thin); font-size:var(--t-hero-size);    line-height:var(--t-hero-lh);    letter-spacing:var(--t-hero-track); }
+.t-display { font-weight:var(--w-thin); font-size:var(--t-display-size); line-height:var(--t-display-lh); letter-spacing:var(--t-display-track); }
+.t-title   { font-weight:var(--w-thin); font-size:var(--t-title-size);   line-height:var(--t-title-lh);   letter-spacing:var(--t-title-track); }
+.t-metric  { font-weight:var(--w-thin); font-size:var(--t-metric-size);  line-height:var(--t-metric-lh);  letter-spacing:var(--t-metric-track); }
+.t-body    { font-weight:var(--w-semi); font-size:var(--t-body-size);    line-height:var(--t-body-lh);    letter-spacing:var(--t-body-track); }
+.t-body-lt { font-weight:var(--w-thin); font-size:var(--t-body-size);    line-height:var(--t-body-lh);    letter-spacing:var(--t-body-track); }
+.t-label   { font-weight:var(--w-semi); font-size:var(--t-label-size);   line-height:var(--t-label-lh);   letter-spacing:var(--t-label-track); }
+.t-caption { font-weight:var(--w-semi); font-size:var(--t-caption-size); line-height:var(--t-caption-lh); letter-spacing:var(--t-caption-track); }
+.t-micro   { font-weight:var(--w-semi); font-size:var(--t-micro-size);   line-height:var(--t-micro-lh);   letter-spacing:var(--t-micro-track); text-transform:uppercase; }
+
+/* Ink roles */
+.ink-1 { color: var(--ink-primary); }
+.ink-2 { color: var(--ink-secondary); }
+.ink-3 { color: var(--ink-tertiary); }
+.ink-i { color: var(--ink-inverse); }

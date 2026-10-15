@@ -1,0 +1,444 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Demo 1 — Orb Lab</title>
+<link rel="stylesheet" href="https://api.fontshare.com/v2/css?f[]=switzer@100,200,600&display=swap">
+<style>
+:root{--font:'Switzer','Suisse Int\'l',-apple-system,BlinkMacSystemFont,'Inter',system-ui,sans-serif}
+*,*::before,*::after{box-sizing:border-box}
+body{margin:0;font-family:var(--font);background:#141517;color:#EDEDEA;overflow:hidden;-webkit-font-smoothing:antialiased}
+.app{display:grid;grid-template-columns:1fr 396px;height:100vh}
+.stage{position:relative;overflow:hidden}
+canvas{position:absolute;inset:0;width:100%;height:100%;display:block}
+.glyph{position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);z-index:5;pointer-events:none}
+.glyph svg{width:28px;height:28px;fill:none;stroke:rgba(255,255,255,.92);stroke-width:1;
+  stroke-linecap:round;stroke-linejoin:round;filter:drop-shadow(0 0 5px rgba(0,0,0,.35))}
+body.no-glyph .glyph{display:none}
+.hud{position:absolute;left:24px;bottom:20px;font-weight:600;font-size:10px;letter-spacing:.09em;
+  text-transform:uppercase;color:rgba(255,255,255,.38);z-index:6}
+.err{position:absolute;inset:0;display:none;place-items:center;font-weight:600;font-size:13px;color:#E88}
+.panel{background:#1B1C1F;border-left:.5px solid rgba(255,255,255,.10);overflow-y:auto;padding:20px 20px 70px}
+.panel h1{margin:0 0 2px;font-weight:100;font-size:23px;letter-spacing:-.03em}
+.panel .sub{margin:0 0 16px;font-weight:600;font-size:9px;letter-spacing:.1em;text-transform:uppercase;color:#7C7D79}
+details{border-top:.5px solid rgba(255,255,255,.10)}
+details[open]{padding-bottom:8px}
+summary{list-style:none;cursor:pointer;padding:12px 0;font-weight:600;font-size:9px;letter-spacing:.1em;
+  text-transform:uppercase;color:#7C7D79;display:flex;justify-content:space-between;align-items:center}
+summary::-webkit-details-marker{display:none}
+summary::after{content:'+';font-size:13px;color:#5E5F5C}
+details[open] summary::after{content:'–'}
+.row{display:grid;grid-template-columns:92px 1fr 44px;gap:9px;align-items:center;margin-bottom:8px}
+.row label{font-weight:600;font-size:11px;color:#B7B8B3}
+.row output{font-weight:600;font-size:10px;color:#EDEDEA;text-align:right;font-variant-numeric:tabular-nums}
+input[type=range]{-webkit-appearance:none;appearance:none;width:100%;height:2px;background:rgba(255,255,255,.18);border-radius:2px;outline:0}
+input[type=range]::-webkit-slider-thumb{-webkit-appearance:none;width:12px;height:12px;border-radius:50%;background:#EDEDEA;cursor:pointer}
+input[type=color]{width:100%;height:24px;padding:0;border:0;background:transparent;cursor:pointer;border-radius:5px}
+select{width:100%;font-family:var(--font);font-weight:600;font-size:11px;color:#EDEDEA;background:#26272B;
+  border:.5px solid rgba(255,255,255,.14);border-radius:7px;padding:6px 8px;cursor:pointer}
+.segs{display:flex;flex-wrap:wrap;gap:4px;margin-bottom:9px}
+.segs button{font-family:var(--font);font-weight:600;font-size:10.5px;padding:6px 10px;border-radius:99px;
+  border:.5px solid rgba(255,255,255,.16);background:transparent;color:#8B8C88;cursor:pointer;transition:.14s}
+.segs button.on{background:#EDEDEA;color:#17181A;border-color:#EDEDEA}
+.chan{border:.5px solid rgba(255,255,255,.11);border-radius:11px;padding:10px;margin-bottom:8px}
+.chan .hd{display:flex;align-items:center;gap:8px;margin-bottom:9px}
+.chan .dot{width:12px;height:12px;border-radius:50%}
+.chan .hd b{font-weight:600;font-size:11px}
+.chan .row{grid-template-columns:62px 1fr 40px;margin-bottom:6px}
+.acts{display:flex;gap:6px;margin-top:14px}
+.acts button{flex:1;font-family:var(--font);font-weight:600;font-size:11px;padding:9px;border-radius:9px;
+  border:0;background:#EDEDEA;color:#17181A;cursor:pointer}
+.acts button.sec{background:transparent;color:#B7B8B3;border:.5px solid rgba(255,255,255,.16)}
+textarea{width:100%;margin-top:9px;height:110px;background:#0E0F11;color:#9FD8B6;border:.5px solid rgba(255,255,255,.12);
+  border-radius:9px;padding:9px;font-size:10px;font-family:ui-monospace,monospace;resize:vertical;display:none}
+.hint{font-weight:600;font-size:10px;line-height:1.45;color:#6E6F6C;margin:2px 0 10px}
+</style>
+</head>
+<body>
+<div class="app">
+ <div class="stage" id="stage"><canvas id="cv"></canvas>
+   <div class="glyph"><svg viewBox="0 0 24 24"><path d="M12 3v18M7 7.5c0 2 10 2 10 4.5s-10 2.5-10 4.5"/></svg></div>
+   <div class="hud" id="hud"></div><div class="err" id="err">WebGL unavailable.</div></div>
+
+ <aside class="panel">
+  <h1>Orb Lab</h1><p class="sub">Offset channels + dispersion + top lens</p>
+  <div class="segs" id="preset">
+    <button data-p="current" class="on">Current</button><button data-p="hybrid">Hybrid</button>
+    <button data-p="channels">Channels</button><button data-p="film">Film</button><button data-p="loud">Loud</button>
+  </div>
+
+  <details open><summary>Top lens</summary>
+   <p class="hint">A second glass disc over the centre. The ring glow is sampled through it — scattered, dimmed and displaced — so the light reads as coming from underneath.</p>
+   <div class="row"><label>Radius</label><input type="range" id="lensR" min="0" max="1.1" step=".005" value=".54"><output></output></div>
+   <div class="row"><label>Opacity</label><input type="range" id="lensOp" min="0" max="1" step=".01" value=".55"><output></output></div>
+   <div class="row"><label>Fill</label><input type="range" id="lensFill" min="0" max=".9" step=".01" value=".22"><output></output></div>
+   <div class="row"><label>Backdrop blur</label><input type="range" id="lensBg" min="0" max="90" step="1" value="34"><output></output></div>
+   <div class="row"><label>Scatter glow</label><input type="range" id="lensScat" min="0" max="30" step=".5" value="7"><output></output></div>
+   <div class="row"><label>Transmission</label><input type="range" id="lensTr" min="0" max="1.4" step=".01" value=".45"><output></output></div>
+   <div class="row"><label>Edge</label><input type="range" id="lensEdge" min="0" max="1.2" step=".02" value=".1"><output></output></div>
+   <div class="row"><label>Feather</label><input type="range" id="lensFe" min=".002" max=".3" step=".002" value=".02"><output></output></div>
+  </details>
+
+  <details open><summary>Mix</summary>
+   <div class="row"><label>Ch ⇄ Film</label><input type="range" id="mix" min="0" max="1" step=".01" value=".48"><output></output></div>
+   <div class="row"><label>Master op</label><input type="range" id="mop" min="0" max="1.6" step=".01" value=".55"><output></output></div>
+   <div class="row"><label>Saturation</label><input type="range" id="sat" min="0" max="3" step=".02" value=".76"><output></output></div>
+   <div class="row"><label>Contrast</label><input type="range" id="con" min=".3" max="2.5" step=".02" value="1.9"><output></output></div>
+   <div class="row"><label>Brightness</label><input type="range" id="bri" min=".3" max="2.5" step=".02" value="1.16"><output></output></div>
+   <div class="row"><label>Gamma</label><input type="range" id="gam" min=".4" max="2.4" step=".02" value="1.16"><output></output></div>
+  </details>
+
+  <details open><summary>Ring geometry</summary>
+   <div class="row"><label>Size</label><input type="range" id="size" min="100" max="680" step="4" value="268"><output></output></div>
+   <div class="row"><label>Radius</label><input type="range" id="R" min=".2" max=".98" step=".005" value=".66"><output></output></div>
+   <div class="row"><label>Width</label><input type="range" id="W" min=".02" max=".8" step=".005" value=".25"><output></output></div>
+   <div class="row"><label>Softness</label><input type="range" id="soft" min="0" max="4" step=".02" value="1.06"><output></output></div>
+   <div class="row"><label>Squash</label><input type="range" id="sq" min=".5" max="1.6" step=".01" value="1"><output></output></div>
+   <div class="row"><label>Tilt</label><input type="range" id="tilt" min="0" max="360" step="1" value="0"><output></output></div>
+  </details>
+
+  <details open><summary>Channels</summary>
+   <p class="hint"><b>Balance</b> pulls the phases onto an even 360°/n spacing. At 1 the offsets cancel exactly, so the ring stops swinging off-axis — only the colours move.</p>
+   <div class="row"><label>Balance</label><input type="range" id="bal" min="0" max="1" step=".01" value="1"><output></output></div>
+   <div class="row"><label>Count</label><input type="range" id="cnt" min="1" max="6" step="1" value="3"><output></output></div>
+   <div class="row"><label>Path</label><select id="cpath">
+     <option value="0">orbit</option><option value="1">figure-8</option><option value="2">linear</option>
+     <option value="3">still — colour only</option><option value="4">counter-rotate</option></select><output>—</output></div>
+   <div class="row"><label>Blend</label><select id="cblend">
+     <option value="0">add</option><option value="1">screen</option><option value="2" selected>colour-dodge</option>
+     <option value="3">lighten</option><option value="4">difference</option></select><output>—</output></div>
+   <div class="row"><label>Spread all</label><input type="range" id="spread" min="0" max="40" step=".5" value="9.5"><output></output></div>
+   <div class="row"><label>Soften all</label><input type="range" id="csoft" min="0" max="3" step=".02" value=".54"><output></output></div>
+   <div class="segs" id="pal">
+     <button data-p="cool" class="on">Cool</button><button data-p="mint">Mint</button>
+     <button data-p="violet">Violet</button><button data-p="wide">Wide</button><button data-p="mono">Mono</button></div>
+   <div id="chans"></div>
+  </details>
+
+  <details open><summary>Thin film + refraction</summary>
+   <div class="row"><label>Thickness</label><input type="range" id="film" min="120" max="2000" step="5" value="120"><output></output></div>
+   <div class="row"><label>Variation</label><input type="range" id="fvar" min="0" max="3" step=".02" value=".8"><output></output></div>
+   <div class="row"><label>Noise</label><input type="range" id="noise" min="0" max="3" step=".02" value=".42"><output></output></div>
+   <div class="row"><label>Bands</label><input type="range" id="bands" min="1" max="9" step=".1" value="3.5"><output></output></div>
+   <div class="row"><label>Red cut</label><input type="range" id="redcut" min="0" max="1" step=".02" value=".9"><output></output></div>
+   <div class="row"><label>Bend (IOR)</label><input type="range" id="ior" min="0" max="5" step=".02" value=".98"><output></output></div>
+   <div class="row"><label>Dispersion</label><input type="range" id="disp" min="0" max="3" step=".02" value="1.1"><output></output></div>
+   <div class="row"><label>Warp</label><input type="range" id="warp" min="0" max="4" step=".02" value=".86"><output></output></div>
+   <div class="row"><label>Fresnel</label><input type="range" id="fres" min=".2" max="7" step=".05" value="1"><output></output></div>
+   <div class="row"><label>Specular</label><input type="range" id="spec" min="0" max="2.5" step=".02" value="0"><output></output></div>
+  </details>
+
+  <details open><summary>Base glass</summary>
+   <div class="row"><label>Fill</label><input type="range" id="gfill" min="0" max=".9" step=".01" value=".16"><output></output></div>
+   <div class="row"><label>Blur</label><input type="range" id="gblur" min="0" max="90" step="1" value="49"><output></output></div>
+   <div class="row"><label>Edge light</label><input type="range" id="gedge" min="0" max="1.5" step=".02" value=".12"><output></output></div>
+   <div class="row"><label>Inner shade</label><input type="range" id="gshade" min="0" max=".8" step=".01" value="0"><output></output></div>
+  </details>
+
+  <details open><summary>Motion</summary>
+   <div class="row"><label>Speed</label><input type="range" id="spd" min="0" max="4" step=".02" value=".34"><output></output></div>
+   <div class="row"><label>Breathe</label><input type="range" id="brt" min="0" max=".3" step=".005" value=".055"><output></output></div>
+   <div class="row"><label>Drift</label><input type="range" id="drift" min="0" max="2" step=".02" value="0"><output></output></div>
+  </details>
+
+  <details><summary>Backdrop</summary>
+   <div class="segs" id="bg"><button data-v="0" class="on">Photo</button><button data-v="1">Light</button>
+     <button data-v="2">Mid</button><button data-v="3">Dark</button><button data-v="4">Black</button>
+     <button data-v="5">Custom</button></div>
+   <div class="row"><label>Custom</label><input type="color" id="bgc" value="#556070"><output>—</output></div>
+   <div class="segs" id="tog"><button data-k="no-glyph">Hide glyph</button><button data-k="paused">Pause</button></div>
+  </details>
+
+  <div class="acts"><button id="copy">Export JSON</button><button class="sec" id="paste">Import</button>
+    <button class="sec" id="reset">Reset</button></div>
+  <p class="hint" style="margin-top:14px">Live config — edit and it applies instantly.
+  Paste this whole object into <code>ORB_CONFIG</code> in prototype.html.</p>
+  <textarea id="io" spellcheck="false" style="display:block;height:250px"></textarea>
+ </aside>
+</div>
+
+<script>
+const cv=document.getElementById('cv'),stage=document.getElementById('stage');
+const gl=cv.getContext('webgl',{alpha:false,antialias:true});
+if(!gl)document.getElementById('err').style.display='grid';
+const VS='attribute vec2 a;varying vec2 vUv;void main(){vUv=a*0.5+0.5;gl_Position=vec4(a,0.,1.);}';
+const FS=`precision highp float;
+varying vec2 vUv;
+uniform vec2 uRes,uCenter,uCover,uOff;
+uniform float uT,uRad,uR,uW,uSoft,uSq,uTilt,uMix,uMop,uSat,uCon,uBri,uGam,
+  uCount,uCBlend,uCSoft,uFilm,uFvar,uNoise,uBands,uRedCut,uIor,uDisp,uWarp,uFres,uSpec,
+  uGFill,uGBlur,uGEdge,uGShade,uUseTex,uBreath,
+  uLensR,uLensOp,uLensFill,uLensBg,uLensScat,uLensTr,uLensEdge,uLensFe;
+uniform vec3 uFlat,uCol[6];
+uniform vec4 uCh[6];
+uniform sampler2D uTex;
+
+float hash(vec2 p){return fract(sin(dot(p,vec2(41.3,289.1)))*43758.5453);}
+float nse(vec2 p){vec2 i=floor(p),f=fract(p);f=f*f*(3.-2.*f);
+  return mix(mix(hash(i),hash(i+vec2(1,0)),f.x),mix(hash(i+vec2(0,1)),hash(i+vec2(1,1)),f.x),f.y);}
+vec3 bgAt(vec2 uv){return uUseTex<0.5?uFlat:texture2D(uTex,uv*uCover+uOff).rgb;}
+vec3 bgBlur(vec2 uv,float rad){
+  if(uUseTex<0.5)return uFlat;
+  vec3 s=vec3(0.);float k=rad/uRes.x;
+  for(int i=0;i<12;i++){float a=float(i)*2.399963;
+    s+=bgAt(uv+vec2(cos(a),sin(a))*k*sqrt(float(i+1)/12.0));}
+  return s/12.0;}
+vec3 filmc(float d){vec3 lam=vec3(612.,545.,464.);
+  return 0.5+0.5*cos(12.566370614*1.33*d*uBands/lam/3.0);}
+vec3 sat3(vec3 c,float s){float l=dot(c,vec3(.2126,.7152,.0722));return mix(vec3(l),c,s);}
+float annulus(vec2 p,float soft){
+  float h=(length(p)-uR)/max(uW,1e-4);
+  return pow(max(1.0-smoothstep(0.0,1.0,abs(h)),0.0),1.0+soft*3.0);}
+
+/* the whole light contribution at a point — sampled repeatedly under the lens */
+vec3 glow(vec2 q,vec2 uv){
+  float r=length(q),ang=atan(q.y,q.x);
+  vec3 chs=vec3(0.0);
+  for(int i=0;i<6;i++){
+    if(float(i)>=uCount) break;
+    vec4 c=uCh[i];
+    vec2 o=vec2(cos(c.w),sin(c.w))*c.z*0.01;
+    vec3 v=uCol[i]*annulus(q-o,uSoft+c.y*uCSoft)*c.x;
+    if(uCBlend<0.5)      chs+=v;
+    else if(uCBlend<1.5) chs=1.0-(1.0-chs)*(1.0-v);
+    else if(uCBlend<2.5) chs=min(vec3(4.0),chs+v*(0.6+chs*1.6));
+    else if(uCBlend<3.5) chs=max(chs,v);
+    else                 chs=abs(chs-v);
+  }
+  vec3 flm=vec3(0.0);
+  float band=annulus(q,uSoft);
+  if(band>0.002){
+    float h=(r-uR)/max(uW,1e-4);
+    vec3 N=normalize(vec3(q/max(r,1e-4)*clamp(h,-1.,1.),sqrt(max(0.0,1.0-h*h))));
+    float fres=pow(1.0-abs(N.z),uFres);
+    float nz=nse(vec2(ang*2.6+uT*0.22,r*7.0-uT*0.14));
+    float d=uFilm*(1.0+uFvar*(fres*1.4+(nz-0.5)*uNoise*2.0+sin(ang*3.0+uT*0.55)*0.3));
+    vec3 irid=filmc(d);
+    vec2 dir=q/max(r,1e-4);
+    vec2 off=dir*(uIor*clamp(h,-1.,1.)*0.045)+dir*uWarp*(nz-0.5)*0.03;
+    vec3 bgr;
+    bgr.r=bgAt(uv+off*(1.0+uDisp*0.6)).r;
+    bgr.g=bgAt(uv+off).g;
+    bgr.b=bgAt(uv+off*(1.0-uDisp*0.6)).b;
+    float ex=max(irid.r-max(irid.g,irid.b),0.0);
+    irid.r-=ex*uRedCut; irid.g+=ex*uRedCut*0.9;
+    flm=(bgr*0.45+irid*(0.5+fres*1.0)+pow(fres,3.0)*uSpec)*band;
+  }
+  vec3 fx=mix(chs,flm,uMix);
+  fx=sat3(fx,uSat);
+  fx=(fx-0.5)*uCon+0.5;
+  fx*=uBri;
+  return pow(max(fx,0.0),vec3(1.0/uGam));
+}
+
+void main(){
+  vec2 px=vUv*uRes;
+  vec2 q=(px-uCenter)/uRad;
+  float ca=cos(uTilt),sa=sin(uTilt);
+  q=vec2(q.x*ca-q.y*sa,q.x*sa+q.y*ca);
+  q.y/=uSq; q/=uBreath;
+  float r=length(q);
+
+  vec3 col=bgAt(vUv);
+
+  /* base glass body */
+  float body=1.0-smoothstep(0.985,1.0,r);
+  if(body>0.001){
+    vec3 g=mix(bgBlur(vUv,uGBlur),vec3(1.0),uGFill);
+    g*=1.0-uGShade*smoothstep(0.0,1.0,r);
+    col=mix(col,g,body);
+    col+=uGEdge*smoothstep(0.86,1.0,r)*(1.0-smoothstep(0.99,1.0,r));
+  }
+
+  /* how much of this pixel is under the top lens */
+  float lens=1.0-smoothstep(uLensR-uLensFe,uLensR+uLensFe,r);
+
+  vec3 lit=glow(q,vUv);
+  if(lens>0.002 && uLensScat>0.0){
+    vec3 acc=vec3(0.0);
+    for(int i=0;i<8;i++){
+      float a=float(i)*2.399963;
+      vec2 o=vec2(cos(a),sin(a))*uLensScat*0.004*sqrt(float(i+1)/8.0);
+      acc+=glow(q+o,vUv+o*0.06);
+    }
+    lit=mix(lit, acc/8.0*uLensTr, lens);
+  } else if(lens>0.002){
+    lit=mix(lit, lit*uLensTr, lens);
+  }
+  col+=lit*uMop;
+
+  /* the lens itself, painted over the light it is covering */
+  if(lens>0.002){
+    vec3 lensCol=mix(bgBlur(vUv,uLensBg),vec3(1.0),uLensFill);
+    col=mix(col, mix(col,lensCol,uLensOp), lens);
+    col+=uLensEdge*smoothstep(uLensR-uLensFe*2.0,uLensR,r)*(1.0-smoothstep(uLensR,uLensR+uLensFe,r));
+  }
+  gl_FragColor=vec4(clamp(col,0.0,1.0),1.0);
+}`;
+
+const PAL={cool:['#3FCF6A','#79C0EC','#612CC3','#5EE0C4','#7C8FF0','#B78BEA'],
+  mint:['#8FF2B4','#5FE9D2','#4FD2F0','#79E8A8','#3FC9C0','#A8F0D0'],
+  violet:['#7E6BEE','#A97BE8','#5F8CF2','#C08BF0','#6E5BD8','#8F9CF5'],
+  wide:['#C9F27A','#4FE0B0','#4FC0F0','#8090F5','#B47BEE','#E0D060'],
+  mono:['#DFE4DA','#B9C4B6','#94A296','#CDD6C8','#A6B3A4','#7F8C80']};
+const hex=h=>[parseInt(h.substr(1,2),16)/255,parseInt(h.substr(3,2),16)/255,parseInt(h.substr(5,2),16)/255];
+let P={},CH=[{col:'#3FCF6A',op:1.02,soft:.4,amp:9.5,ph:0},
+             {col:'#79C0EC',op:.66,soft:.4,amp:9.5,ph:120},
+             {col:'#612CC3',op:.85,soft:.86,amp:15,ph:240}];
+let curPal='cool',BG=0,T=0,last=performance.now();
+
+function rebuildChans(){
+  const n=P.cnt|0;
+  while(CH.length<n)CH.push({col:PAL[curPal][CH.length],op:.85,soft:.4,amp:P.spread||6,ph:CH.length*360/n});
+  CH.length=n;
+  document.getElementById('chans').innerHTML=CH.map((c,i)=>`
+   <div class="chan"><div class="hd"><span class="dot" style="background:${c.col}"></span><b>Ch ${i+1}</b></div>
+    <div class="row"><label>Colour</label><input type="color" data-i="${i}" data-k="col" value="${c.col}"><output>—</output></div>
+    <div class="row"><label>Opacity</label><input type="range" data-i="${i}" data-k="op" min="0" max="1.5" step=".01" value="${c.op}"><output>${c.op}</output></div>
+    <div class="row"><label>Soften</label><input type="range" data-i="${i}" data-k="soft" min="0" max="3" step=".02" value="${c.soft}"><output>${c.soft}</output></div>
+    <div class="row"><label>Offset</label><input type="range" data-i="${i}" data-k="amp" min="0" max="60" step=".5" value="${c.amp}"><output>${c.amp}</output></div>
+    <div class="row"><label>Phase</label><input type="range" data-i="${i}" data-k="ph" min="0" max="360" step="1" value="${c.ph}"><output>${c.ph}</output></div>
+   </div>`).join('');
+}
+document.getElementById('chans').addEventListener('input',e=>{
+  const i=+e.target.dataset.i,k=e.target.dataset.k;if(isNaN(i))return;
+  CH[i][k]=k==='col'?e.target.value:+e.target.value;
+  if(k==='col')e.target.closest('.chan').querySelector('.dot').style.background=CH[i].col;
+  else e.target.parentElement.querySelector('output').textContent=CH[i][k];});
+
+document.querySelectorAll('.row input[type=range]').forEach(el=>{
+  if(el.dataset.i!==undefined)return;
+  const go=()=>{P[el.id]=+el.value;el.parentElement.querySelector('output').textContent=el.value;
+    if(el.id==='cnt')rebuildChans();
+    if(el.id==='spread')CH.forEach(c=>c.amp=+el.value);
+    hud.textContent=`${P.cnt} ch · mix ${(P.mix*100)|0}% film · balance ${(P.bal*100)|0}% · lens ${(P.lensR*100)|0}%`;};
+  el.oninput=go;go();});
+['cblend','cpath'].forEach(id=>{const el=document.getElementById(id);
+  el.onchange=()=>P[id]=+el.value;P[id]=+el.value;});
+bg.onclick=e=>{if(!e.target.dataset.v)return;
+  [...bg.children].forEach(b=>b.classList.toggle('on',b===e.target));BG=+e.target.dataset.v;};
+bgc.oninput=()=>{BG=5;[...bg.children].forEach(b=>b.classList.toggle('on',b.dataset.v==='5'));};
+tog.onclick=e=>{const k=e.target.dataset.k;if(!k)return;
+  e.target.classList.toggle('on');document.body.classList.toggle(k);};
+pal.onclick=e=>{if(!e.target.dataset.p)return;
+  [...pal.children].forEach(b=>b.classList.toggle('on',b===e.target));
+  curPal=e.target.dataset.p;CH.forEach((c,i)=>c.col=PAL[curPal][i]);rebuildChans();};
+const PRESETS={
+ current:{mix:.48,mop:.55,sat:.76,con:1.9,bri:1.16,gam:1.16,size:268,R:.66,W:.25,soft:1.06,cnt:3,
+   spread:9.5,csoft:.54,film:120,fvar:.8,noise:.42,bands:3.5,ior:.98,disp:1.1,warp:.86,fres:1,spec:0,
+   gfill:.16,gblur:49,gedge:.12,spd:.34,brt:.055,drift:0,bal:1,lensR:.54,lensOp:.55,lensFill:.22,
+   lensBg:34,lensScat:7,lensTr:.45,lensEdge:.1,lensFe:.02},
+ hybrid:{mix:.5,mop:1,sat:1.2,R:.76,W:.2,soft:1.1,cnt:4,spread:4,csoft:1,film:520,fvar:.85,disp:.9,
+   ior:1.4,gfill:.18,gblur:26,spec:.35,bal:1,lensR:.5,lensOp:.5,lensTr:.5},
+ channels:{mix:0,mop:1.15,sat:1.6,R:.73,W:.19,soft:1.4,cnt:4,spread:5,csoft:1.4,gfill:.41,gblur:32,bal:1},
+ film:{mix:1,mop:1,sat:1.25,R:.8,W:.16,soft:.9,film:620,fvar:1.1,disp:1.5,ior:2.1,warp:1.1,spec:.5,
+   gfill:.14,gblur:22,lensR:.42},
+ loud:{mix:.45,mop:1.5,sat:2.4,con:1.3,bri:1.2,R:.7,W:.34,soft:.4,cnt:6,spread:14,csoft:.3,film:900,
+   fvar:1.8,disp:2.2,ior:3,warp:2,spec:1.2,lensR:.46,lensOp:.7,lensScat:16}};
+preset.onclick=e=>{const p=e.target.dataset.p;if(!p)return;
+  [...preset.children].forEach(b=>b.classList.toggle('on',b===e.target));
+  Object.entries(PRESETS[p]).forEach(([k,v])=>{const el=document.getElementById(k);
+    if(el){el.value=v;el.dispatchEvent(new Event('input'));}});};
+function syncIO(){if(document.activeElement!==io) io.value=JSON.stringify({P,CH,pal:curPal,BG},null,1);}
+io.addEventListener('input',()=>{try{const d=JSON.parse(io.value);
+  if(d.CH)CH=d.CH;
+  Object.entries(d.P||{}).forEach(([k,v])=>{const el=document.getElementById(k);
+    if(el&&+el.value!==v){el.value=v;P[k]=+v;
+      const o=el.parentElement.querySelector('output');if(o)o.textContent=v;}});
+  if(d.CH)rebuildChans();io.style.outline='none';}catch(e){io.style.outline='1px solid #C05';}});
+setInterval(syncIO,300);
+copy.onclick=()=>{io.style.display='block';io.value=JSON.stringify({P,CH,pal:curPal,BG},null,1);
+  navigator.clipboard?.writeText(io.value);copy.textContent='Copied ✓';
+  setTimeout(()=>copy.textContent='Export JSON',1300);};
+paste.onclick=()=>{io.style.display='block';
+  try{const d=JSON.parse(io.value);CH=d.CH||CH;
+    Object.entries(d.P).forEach(([k,v])=>{const el=document.getElementById(k);
+      if(el){el.value=v;el.dispatchEvent(new Event('input'));}});rebuildChans();}
+  catch(e){io.value='invalid JSON';}};
+reset.onclick=()=>location.reload();
+
+let U={},tex;
+if(gl){
+  const sh=(t,s)=>{const o=gl.createShader(t);gl.shaderSource(o,s);gl.compileShader(o);
+    if(!gl.getShaderParameter(o,gl.COMPILE_STATUS))console.error(gl.getShaderInfoLog(o));return o;};
+  const pr=gl.createProgram();
+  gl.attachShader(pr,sh(gl.VERTEX_SHADER,VS));gl.attachShader(pr,sh(gl.FRAGMENT_SHADER,FS));
+  gl.linkProgram(pr);gl.useProgram(pr);
+  const b=gl.createBuffer();gl.bindBuffer(gl.ARRAY_BUFFER,b);
+  gl.bufferData(gl.ARRAY_BUFFER,new Float32Array([-1,-1,3,-1,-1,3]),gl.STATIC_DRAW);
+  const a=gl.getAttribLocation(pr,'a');gl.enableVertexAttribArray(a);gl.vertexAttribPointer(a,2,gl.FLOAT,false,0,0);
+  ('uRes uCenter uCover uOff uT uRad uR uW uSoft uSq uTilt uMix uMop uSat uCon uBri uGam uCount uCBlend uCSoft '+
+   'uFilm uFvar uNoise uBands uRedCut uIor uDisp uWarp uFres uSpec uGFill uGBlur uGEdge uGShade uUseTex uBreath '+
+   'uLensR uLensOp uLensFill uLensBg uLensScat uLensTr uLensEdge uLensFe uFlat uTex').split(' ')
+   .forEach(n=>U[n]=gl.getUniformLocation(pr,n));
+  U.uCol=gl.getUniformLocation(pr,'uCol[0]');U.uCh=gl.getUniformLocation(pr,'uCh[0]');
+  tex=gl.createTexture();gl.bindTexture(gl.TEXTURE_2D,tex);
+  gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,1,1,0,gl.RGBA,gl.UNSIGNED_BYTE,new Uint8Array([128,128,128,255]));
+  const im=new Image();
+  im.onload=()=>{gl.bindTexture(gl.TEXTURE_2D,tex);gl.pixelStorei(gl.UNPACK_FLIP_Y_WEBGL,true);
+    gl.texImage2D(gl.TEXTURE_2D,0,gl.RGBA,gl.RGBA,gl.UNSIGNED_BYTE,im);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MIN_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_MAG_FILTER,gl.LINEAR);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_S,gl.CLAMP_TO_EDGE);
+    gl.texParameteri(gl.TEXTURE_2D,gl.TEXTURE_WRAP_T,gl.CLAMP_TO_EDGE);};
+  im.src='data:image/png;base64,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';
+}
+const FLAT=[[0,0,0],[.937,.937,.925],[.541,.549,.525],[.09,.094,.102],[0,0,0],[0,0,0]];
+function frame(now){
+  const dt=(now-last)/1000;last=now;
+  if(!document.body.classList.contains('paused'))T+=dt*P.spd;
+  if(gl){
+    const dpr=Math.min(devicePixelRatio||1,2),w=stage.clientWidth,h=stage.clientHeight;
+    if(cv.width!==w*dpr||cv.height!==h*dpr){cv.width=w*dpr;cv.height=h*dpr;}
+    gl.viewport(0,0,cv.width,cv.height);
+    const RES=[cv.width,cv.height],ta=22/42,car=RES[0]/RES[1];
+    let cov,off;
+    if(car>ta){cov=[1,ta/car];off=[0,(1-cov[1])/2];}else{cov=[car/ta,1];off=[(1-cov[0])/2,0];}
+    gl.uniform2fv(U.uRes,RES);gl.uniform2fv(U.uCenter,[RES[0]/2,RES[1]/2]);
+    gl.uniform2fv(U.uCover,cov);gl.uniform2fv(U.uOff,off);
+    gl.uniform1f(U.uRad,P.size*dpr/2);gl.uniform1f(U.uT,T);
+    gl.uniform1f(U.uR,P.R);gl.uniform1f(U.uW,P.W);gl.uniform1f(U.uSoft,P.soft);
+    gl.uniform1f(U.uSq,P.sq);gl.uniform1f(U.uTilt,P.tilt*Math.PI/180);
+    gl.uniform1f(U.uMix,P.mix);gl.uniform1f(U.uMop,P.mop);gl.uniform1f(U.uSat,P.sat);
+    gl.uniform1f(U.uCon,P.con);gl.uniform1f(U.uBri,P.bri);gl.uniform1f(U.uGam,P.gam);
+    gl.uniform1f(U.uCount,P.cnt);gl.uniform1f(U.uCBlend,P.cblend);gl.uniform1f(U.uCSoft,P.csoft);
+    gl.uniform1f(U.uFilm,P.film);gl.uniform1f(U.uFvar,P.fvar);gl.uniform1f(U.uNoise,P.noise);
+    gl.uniform1f(U.uBands,P.bands);gl.uniform1f(U.uRedCut,P.redcut);
+    gl.uniform1f(U.uIor,P.ior);gl.uniform1f(U.uDisp,P.disp);gl.uniform1f(U.uWarp,P.warp);
+    gl.uniform1f(U.uFres,P.fres);gl.uniform1f(U.uSpec,P.spec);
+    gl.uniform1f(U.uGFill,P.gfill);gl.uniform1f(U.uGBlur,P.gblur*dpr);
+    gl.uniform1f(U.uGEdge,P.gedge);gl.uniform1f(U.uGShade,P.gshade);
+    gl.uniform1f(U.uBreath,1+Math.sin(T*1.2)*P.brt);
+    gl.uniform1f(U.uLensR,P.lensR);gl.uniform1f(U.uLensOp,P.lensOp);
+    gl.uniform1f(U.uLensFill,P.lensFill);gl.uniform1f(U.uLensBg,P.lensBg*dpr);
+    gl.uniform1f(U.uLensScat,P.lensScat);gl.uniform1f(U.uLensTr,P.lensTr);
+    gl.uniform1f(U.uLensEdge,P.lensEdge);gl.uniform1f(U.uLensFe,P.lensFe);
+    gl.uniform1f(U.uUseTex,BG===0?1:0);
+    gl.uniform3fv(U.uFlat,BG===5?hex(bgc.value):FLAT[BG]);
+
+    const n=CH.length,cols=new Float32Array(18),chs=new Float32Array(24);
+    CH.forEach((c,i)=>{
+      cols.set(hex(c.col),i*3);
+      /* balance: pull the phase onto an even 360/n spacing so the offsets cancel */
+      const even=i*360/n;
+      const ph=(c.ph*(1-P.bal)+even*P.bal)*Math.PI/180;
+      const spin=P.cpath==3?0:T*1.4;                       // 3 = still
+      const dir=(P.cpath==4 && i%2)?-1:1;                  // 4 = counter-rotate
+      let ax=c.amp,ay=c.amp;
+      if(P.cpath==1){ay=c.amp*0.55;}                        // figure-8
+      if(P.cpath==2){ay=c.amp*0.35;}                        // linear
+      const drift=1+Math.sin(T*0.37+i)*P.drift*0.25;
+      const a=spin*dir+ph;
+      const bx=Math.cos(a)*ax*drift, by=(P.cpath==1?Math.sin(a*2):Math.sin(a))*ay*drift;
+      chs.set([c.op,c.soft,Math.hypot(bx,by),Math.atan2(by,bx)],i*4);
+    });
+    gl.uniform3fv(U.uCol,cols);gl.uniform4fv(U.uCh,chs);
+    gl.activeTexture(gl.TEXTURE0);gl.bindTexture(gl.TEXTURE_2D,tex);gl.uniform1i(U.uTex,0);
+    gl.drawArrays(gl.TRIANGLES,0,3);
+  }
+  requestAnimationFrame(frame);
+}
+rebuildChans();requestAnimationFrame(frame);
+</script>
+</body>
+</html>
