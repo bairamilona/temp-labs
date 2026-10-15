@@ -636,6 +636,15 @@ body{margin:0;background:#EAEAE7;font-family:var(--font);
   background-size:220% 100%;animation:sh 1.5s linear infinite;border-radius:var(--r-xs);corner-shape:squircle;}
 @keyframes sh{to{background-position:-220% 0;}}
 </style>
+<style id="mobile">
+@media (max-width:760px){
+  .harness{padding:28px 16px 48px}
+  .harness h1{font-size:28px}
+  .rail{gap:20px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:0 16px 24px;scroll-padding:0 16px}
+  .slot{scroll-snap-align:start;zoom:.84}
+}
+@supports not (zoom:1){ @media (max-width:760px){ .slot{transform:scale(.86);transform-origin:top left} } }
+</style>
 </head>
 <body>
 <div class="harness">

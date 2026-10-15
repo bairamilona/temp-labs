@@ -53,6 +53,15 @@ textarea{width:100%;margin-top:9px;height:110px;background:#0E0F11;color:#9FD8B6
   border-radius:9px;padding:9px;font-size:10px;font-family:ui-monospace,monospace;resize:vertical;display:none}
 .hint{font-weight:600;font-size:10px;line-height:1.45;color:#6E6F6C;margin:2px 0 10px}
 </style>
+<style id="mobile">
+@media (max-width:760px){
+  html,body{overflow:visible;height:auto}
+  .app{grid-template-columns:minmax(0,1fr);grid-template-rows:auto auto;height:auto;min-height:100dvh}
+  .stage{position:sticky;top:0;z-index:5;height:46dvh;min-height:280px}
+  .panel{border-left:0;border-top:.5px solid rgba(255,255,255,.10);overflow:visible;padding:18px 16px 56px}
+  .row{grid-template-columns:78px minmax(0,1fr) 40px}
+}
+</style>
 </head>
 <body>
 <div class="app">
