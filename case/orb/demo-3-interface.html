@@ -637,13 +637,14 @@ body{margin:0;background:#EAEAE7;font-family:var(--font);
 @keyframes sh{to{background-position:-220% 0;}}
 </style>
 <style id="mobile">
+.compat-note{display:none!important}
 @media (max-width:760px){
   .harness{padding:28px 16px 48px}
   .harness h1{font-size:28px}
   .rail{gap:20px;scroll-snap-type:x mandatory;-webkit-overflow-scrolling:touch;margin:0 -16px;padding:0 16px 24px;scroll-padding:0 16px}
-  .slot{scroll-snap-align:start;zoom:.84}
+  /* transform, not zoom: squircle.js measures offsetWidth, which zoom distorts in Safari */
+  .slot{scroll-snap-align:start;transform:scale(.84);transform-origin:top left;margin-right:-62px;margin-bottom:-140px}
 }
-@supports not (zoom:1){ @media (max-width:760px){ .slot{transform:scale(.86);transform-origin:top left} } }
 </style>
 </head>
 <body>
@@ -885,11 +886,13 @@ body{margin:0;background:#EAEAE7;font-family:var(--font);
   var SELECTOR = '.sq, .card, .tile, .pillrow, .chip, .field, .inline-card, .pbtn, .msg-me';
 
   /* one corner of the superellipse, emitted as L commands */
-  function corner(cx, cy, rx, ry, sx, sy, out) {
+  // top-left and bottom-right leave along y: swap the axes or they cut a notch
+  function corner(cx, cy, rx, ry, sx, sy, out, swap) {
     for (var i = 1; i <= SAMPLES; i++) {
       var t = i / SAMPLES;
       var c = Math.pow(1 - Math.pow(t, N), 1 / N);
-      out.push('L ' + (cx + sx * rx * t).toFixed(2) + ' ' + (cy + sy * ry * (1 - c)).toFixed(2));
+      var a = swap ? 1 - c : t, b = swap ? t : 1 - c;
+      out.push('L ' + (cx + sx * rx * a).toFixed(2) + ' ' + (cy + sy * ry * b).toFixed(2));
     }
   }
 
@@ -898,11 +901,11 @@ body{margin:0;background:#EAEAE7;font-family:var(--font);
     var p = ['M ' + r.toFixed(2) + ' 0', 'L ' + (w - r).toFixed(2) + ' 0'];
     corner(w - r, 0, r, r,  1,  1, p);                       // top-right
     p.push('L ' + w.toFixed(2) + ' ' + (h - r).toFixed(2));
-    corner(w, h - r, r, r, -1,  1, p);                       // bottom-right
+    corner(w, h - r, r, r, -1,  1, p, true);                       // bottom-right
     p.push('L ' + r.toFixed(2) + ' ' + h.toFixed(2));
     corner(r, h, r, r, -1, -1, p);                           // bottom-left
     p.push('L 0 ' + r.toFixed(2));
-    corner(0, r, r, r,  1, -1, p);                           // top-left
+    corner(0, r, r, r,  1, -1, p, true);                           // top-left
     p.push('Z');
     return p.join(' ');
   }

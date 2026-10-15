@@ -27,12 +27,15 @@
   var SAMPLES  = 22;    // points per corner
   var SELECTOR = '.sq, .card, .tile, .pillrow, .chip, .field, .inline-card, .pbtn, .msg-me';
 
-  /* one corner of the superellipse, emitted as L commands */
-  function corner(cx, cy, rx, ry, sx, sy, out) {
+  /* one corner of the superellipse, emitted as L commands.
+     The top-right and bottom-left corners leave along x; the other two leave
+     along y, so their axes swap (without the swap they cut a notch). */
+  function corner(cx, cy, rx, ry, sx, sy, out, swap) {
     for (var i = 1; i <= SAMPLES; i++) {
       var t = i / SAMPLES;
       var c = Math.pow(1 - Math.pow(t, N), 1 / N);
-      out.push('L ' + (cx + sx * rx * t).toFixed(2) + ' ' + (cy + sy * ry * (1 - c)).toFixed(2));
+      var a = swap ? 1 - c : t, b = swap ? t : 1 - c;
+      out.push('L ' + (cx + sx * rx * a).toFixed(2) + ' ' + (cy + sy * ry * b).toFixed(2));
     }
   }
 
@@ -41,11 +44,11 @@
     var p = ['M ' + r.toFixed(2) + ' 0', 'L ' + (w - r).toFixed(2) + ' 0'];
     corner(w - r, 0, r, r,  1,  1, p);                       // top-right
     p.push('L ' + w.toFixed(2) + ' ' + (h - r).toFixed(2));
-    corner(w, h - r, r, r, -1,  1, p);                       // bottom-right
+    corner(w, h - r, r, r, -1,  1, p, true);                 // bottom-right
     p.push('L ' + r.toFixed(2) + ' ' + h.toFixed(2));
     corner(r, h, r, r, -1, -1, p);                           // bottom-left
     p.push('L 0 ' + r.toFixed(2));
-    corner(0, r, r, r,  1, -1, p);                           // top-left
+    corner(0, r, r, r,  1, -1, p, true);                     // top-left
     p.push('Z');
     return p.join(' ');
   }
