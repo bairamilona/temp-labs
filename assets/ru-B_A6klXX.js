@@ -1,4 +1,4 @@
-import"./modulepreload-polyfill-B5Qt9EMX.js";import{r as n}from"./article-DWm3EiVx.js";const o=`---
+import"./modulepreload-polyfill-B5Qt9EMX.js";import{r as n}from"./article-GZ3ycph3.js";const o=`---
 title: "Temp Labs"
 subtitle: "О привычке создавать собственные инструменты для работы с AI"
 author: "Илона Байрам · Digital & Product Designer"
