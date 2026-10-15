@@ -1,4 +1,4 @@
-import"./modulepreload-polyfill-B5Qt9EMX.js";import{r as e}from"./article-DcdfD9q_.js";const t=`---
+import"./modulepreload-polyfill-B5Qt9EMX.js";import{r as e}from"./article-CYnHb6Ld.js";const t=`---
 title: "Temp Labs"
 subtitle: "Disposable Design Tools for AI-Assisted Workflows"
 author: "Ilona Bairam · Digital & Product Designer"
