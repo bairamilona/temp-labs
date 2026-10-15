@@ -48,6 +48,7 @@ select{width:100%;font-family:var(--font);font-weight:600;font-size:11px;color:#
 .acts{display:flex;gap:6px;margin-top:14px}
 .shared{display:block;margin:0 0 16px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.07);color:#EDEDEA;font-size:12px;line-height:1.4;text-decoration:none}
 .shared[hidden]{display:none}
+.share-top{display:block;width:100%;margin:12px 0 4px;font-family:var(--font);font-weight:600;font-size:13px;padding:11px;border-radius:10px;border:0;background:#C4FF2E;color:#141517;cursor:pointer}
 .acts button{flex:1;font-family:var(--font);font-weight:600;font-size:11px;padding:9px;border-radius:9px;
   border:0;background:#EDEDEA;color:#17181A;cursor:pointer}
 .acts button.sec{background:transparent;color:#B7B8B3;border:.5px solid rgba(255,255,255,.16)}
@@ -78,6 +79,7 @@ textarea{width:100%;margin-top:9px;height:110px;background:#0E0F11;color:#9FD8B6
     <button data-p="current" class="on">Current</button><button data-p="hybrid">Hybrid</button>
     <button data-p="channels">Channels</button><button data-p="film">Film</button><button data-p="loud">Loud</button>
   </div>
+  <button id="share" class="share-top">Share this ring ↗</button>
 
   <details open><summary>Top lens</summary>
    <p class="hint">A second glass disc over the centre. The ring glow is sampled through it — scattered, dimmed and displaced — so the light reads as coming from underneath.</p>
@@ -161,7 +163,7 @@ textarea{width:100%;margin-top:9px;height:110px;background:#0E0F11;color:#9FD8B6
    <div class="segs" id="tog"><button data-k="no-glyph">Hide glyph</button><button data-k="paused">Pause</button></div>
   </details>
 
-  <div class="acts"><button id="copy">Export JSON</button><button class="sec" id="share">Share link</button><button class="sec" id="paste">Import</button>
+  <div class="acts"><button id="copy">Export JSON</button><button class="sec" id="paste">Import</button>
     <button class="sec" id="reset">Reset</button></div>
   <p class="hint" style="margin-top:14px">Live config — edit and it applies instantly.
   Paste this whole object into <code>ORB_CONFIG</code> in prototype.html.</p>
@@ -379,7 +381,7 @@ share.onclick=async()=>{const url=location.href.split('#')[0]+'#c='+await packCf
   if(navigator.share&&matchMedia('(pointer:coarse)').matches){try{await navigator.share({title:'Orb Lab',url});return;}catch(e){}}
   try{await navigator.clipboard.writeText(url);share.textContent='Link copied ✓';}
   catch(e){io.style.display='block';io.value=url;io.select();share.textContent='Copy the link below';}
-  setTimeout(()=>share.textContent='Share link',1600);};
+  setTimeout(()=>share.textContent='Share this ring ↗',1600);};
 if(location.hash.startsWith('#c=')){unpackCfg(location.hash.slice(3)).then(d=>{
   if(d.CH)CH=d.CH;
   Object.entries(d.P||{}).forEach(([k,v])=>{const el=document.getElementById(k);
