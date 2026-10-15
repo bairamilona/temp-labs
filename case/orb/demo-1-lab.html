@@ -46,6 +46,8 @@ select{width:100%;font-family:var(--font);font-weight:600;font-size:11px;color:#
 .chan .hd b{font-weight:600;font-size:11px}
 .chan .row{grid-template-columns:62px 1fr 40px;margin-bottom:6px}
 .acts{display:flex;gap:6px;margin-top:14px}
+.shared{display:block;margin:0 0 16px;padding:10px 12px;border-radius:10px;background:rgba(255,255,255,.07);color:#EDEDEA;font-size:12px;line-height:1.4;text-decoration:none}
+.shared[hidden]{display:none}
 .acts button{flex:1;font-family:var(--font);font-weight:600;font-size:11px;padding:9px;border-radius:9px;
   border:0;background:#EDEDEA;color:#17181A;cursor:pointer}
 .acts button.sec{background:transparent;color:#B7B8B3;border:.5px solid rgba(255,255,255,.16)}
@@ -70,6 +72,7 @@ textarea{width:100%;margin-top:9px;height:110px;background:#0E0F11;color:#9FD8B6
    <div class="hud" id="hud"></div><div class="err" id="err">WebGL unavailable.</div></div>
 
  <aside class="panel">
+  <a class="shared" id="shared" hidden href="../../index.html">Someone shared this ring with you · Read the essay “Temp Labs” ↗</a>
   <h1>Orb Lab</h1><p class="sub">Offset channels + dispersion + top lens</p>
   <div class="segs" id="preset">
     <button data-p="current" class="on">Current</button><button data-p="hybrid">Hybrid</button>
@@ -158,7 +161,7 @@ textarea{width:100%;margin-top:9px;height:110px;background:#0E0F11;color:#9FD8B6
    <div class="segs" id="tog"><button data-k="no-glyph">Hide glyph</button><button data-k="paused">Pause</button></div>
   </details>
 
-  <div class="acts"><button id="copy">Export JSON</button><button class="sec" id="paste">Import</button>
+  <div class="acts"><button id="copy">Export JSON</button><button class="sec" id="share">Share link</button><button class="sec" id="paste">Import</button>
     <button class="sec" id="reset">Reset</button></div>
   <p class="hint" style="margin-top:14px">Live config — edit and it applies instantly.
   Paste this whole object into <code>ORB_CONFIG</code> in prototype.html.</p>
@@ -365,6 +368,27 @@ paste.onclick=()=>{io.style.display='block';
       if(el){el.value=v;el.dispatchEvent(new Event('input'));}});rebuildChans();}
   catch(e){io.value='invalid JSON';}};
 reset.onclick=()=>location.reload();
+
+// share: the current ring packed into the link
+async function packCfg(o){const st=new Blob([JSON.stringify(o)]).stream().pipeThrough(new CompressionStream('deflate-raw'));
+  const b=new Uint8Array(await new Response(st).arrayBuffer());let t='';b.forEach(x=>t+=String.fromCharCode(x));
+  return btoa(t).replace(/\+/g,'-').replace(/\//g,'_').replace(/=+$/,'');}
+async function unpackCfg(t){const b=Uint8Array.from(atob(t.replace(/-/g,'+').replace(/_/g,'/')),c=>c.charCodeAt(0));
+  const st=new Blob([b]).stream().pipeThrough(new DecompressionStream('deflate-raw'));return JSON.parse(await new Response(st).text());}
+share.onclick=async()=>{const url=location.href.split('#')[0]+'#c='+await packCfg({P,CH,BG});
+  if(navigator.share&&matchMedia('(pointer:coarse)').matches){try{await navigator.share({title:'Orb Lab',url});return;}catch(e){}}
+  try{await navigator.clipboard.writeText(url);share.textContent='Link copied ✓';}
+  catch(e){io.style.display='block';io.value=url;io.select();share.textContent='Copy the link below';}
+  setTimeout(()=>share.textContent='Share link',1600);};
+if(location.hash.startsWith('#c=')){unpackCfg(location.hash.slice(3)).then(d=>{
+  if(d.CH)CH=d.CH;
+  Object.entries(d.P||{}).forEach(([k,v])=>{const el=document.getElementById(k);
+    if(el){el.value=v;el.dispatchEvent(new Event('input'));}});
+  rebuildChans();
+  const b=[...bg.children].find(x=>+x.dataset.v===d.BG);if(b&&d.BG!==5)b.click();
+  [...preset.children].forEach(x=>x.classList.remove('on'));
+  document.getElementById('shared').hidden=false;}).catch(()=>{});}
+
 
 let U={},tex;
 if(gl){
